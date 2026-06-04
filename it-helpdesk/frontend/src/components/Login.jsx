@@ -1,31 +1,75 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function Login() {
+export default function Login({ onLoginSuccess }) {
+  const navigate = useNavigate();
+  
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   
-  // UI Demo states for simulating spinners, errors, and success screens
+  // UI States for handling spinners, errors, and success feedback animations
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [loginSuccess, setLoginSuccess] = useState(false);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    
-    // Pure design simulation toggle for loading and login states
     setIsLoading(true);
     setErrorMessage('');
-    
-    setTimeout(() => {
+
+    // Switch API path depending on whether the operator is signing in or registering
+    const endpoint = isLogin ? 'login' : 'register';
+    const bodyData = isLogin 
+      ? { email, password } 
+      : { fullName, email, password };
+
+    try {
+      const response = await fetch(`http://localhost:5201/api/auth/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*'
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'An error occurred during authentication.');
+      }
+
+      if (isLogin) {
+        // 1. Store JWT token securely in localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // 2. Trigger visual success layout feedback
+        setLoginSuccess(true);
+        
+        // 3. Wait 1.5 seconds for animation, then unlock the app router context framework
+        setTimeout(() => {
+          if (onLoginSuccess) onLoginSuccess();
+          navigate('/dashboard');
+        }, 1500);
+      } else {
+        // Registration success path: Alert user and instantly toggle back to sign-in panel view
+        alert('Registration successful! Please sign in with your new account.');
+        setIsLogin(true);
+        setPassword('');
+        setIsLoading(false);
+      }
+
+    } catch (err) {
+      setErrorMessage(err.message);
       setIsLoading(false);
-      setLoginSuccess(true); 
-    }, 1500);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 transition-all duration-300">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 transition-all duration-300 relative">
       
       {/* Decorative Top-Left Ambient Light Glow */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -41,19 +85,8 @@ export default function Login() {
             </div>
             <div className="space-y-1">
               <h2 className="text-2xl font-bold text-white tracking-tight">Login Successful!</h2>
-              <p className="text-sm text-slate-400">Welcome to your IT-HelpDesk dashboard.</p>
+              <p className="text-sm text-slate-400">Redirecting to your IT-HelpDesk dashboard...</p>
             </div>
-            
-            <button
-              onClick={() => {
-                setLoginSuccess(false);
-                setEmail('');
-                setPassword('');
-              }}
-              className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 underline font-medium transition-all"
-            >
-              Sign out / Back to layout view
-            </button>
           </div>
         ) : (
           /* Interactive Input Form Layout */
@@ -82,7 +115,7 @@ export default function Login() {
             <form className="space-y-6" onSubmit={handleFormSubmit}>
               <div className="space-y-4">
                 
-                {/* Full Name field (Only displays during registration layout view) */}
+                {/* Full Name field */}
                 {!isLogin && (
                   <div className="transition-all duration-200">
                     <label className="text-slate-400 text-xs font-semibold uppercase tracking-wider block mb-1.5 ml-1">Full Name</label>
@@ -141,7 +174,7 @@ export default function Login() {
                 </div>
               )}
 
-              {/* Action Execution Button with Loading Spin States */}
+              {/* Action Execution Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -166,6 +199,7 @@ export default function Login() {
             {/* View Toggle Controller Footer */}
             <div className="border-t border-slate-800/80 pt-6 text-center">
               <button
+                type="button"
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setErrorMessage('');
