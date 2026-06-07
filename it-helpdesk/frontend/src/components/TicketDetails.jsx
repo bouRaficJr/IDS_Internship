@@ -1,40 +1,117 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 export default function TicketDetails() {
-  const [ticket, setTicket] = useState({
-    id: 'TCK-1002',
-    subject: 'SSO Login Integration Failing with Okta',
-    description: 'Our enterprise team is experiencing intermittent 403 Forbidden errors when attempting to log in via Okta SSO. This is blocking 40 accounts globally across our marketing unit.',
-    category: 'Authentication',
-    status: 'Open', // 'Open' | 'Progress' | 'Resolve'
-    priority: 'Critical',
-    reporter: 'Sarah Jenkins (Apex Corp)',
-    assignedTo: 'Alex Johnson (You)',
-    createdAt: '2026-05-20 09:15 AM',
-    comments: [
-      { id: 1, author: 'Sarah Jenkins', avatar: 'SJ', isSystem: false, text: 'This is blocking our entire marketing team from logging in. Urgent help needed!', time: '1 day ago' },
-      { id: 2, author: 'System Bot', avatar: '🤖', isSystem: true, text: 'Ticket auto-assigned to Tier 2 Engineering via dispatch engines.', time: '1 day ago' }
-    ]
-  });
+  const { id } = useParams(); // Grabs the URL index ID parameter
+  const navigate = useNavigate();
 
+  // Network State Management Architecture
+  const [ticket, setTicket] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const [commentText, setCommentText] = useState('');
+
+  // Local state array placeholder for frontend comments mock engine
+  const [localComments, setLocalComments] = useState([
+    { id: 1, author: 'Sarah Jenkins', avatar: 'SJ', isSystem: false, text: 'This is blocking our entire marketing team from logging in. Urgent help needed!', time: '1 day ago' },
+    { id: 2, author: 'System Bot', avatar: '🤖', isSystem: true, text: 'Ticket auto-assigned to Tier 2 Engineering via dispatch engines.', time: '1 day ago' }
+  ]);
+
+  // Fetch the specific asset payload matching the target database index
+  useEffect(() => {
+    const fetchTicketData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5201/api/tickets/${id}`, {
+          method: 'GET',
+          headers: {
+            'Accept': '*/*',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to locate target item record metadata. Server response: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setTicket(data);
+      } catch (err) {
+        setErrorMessage(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTicketData();
+  }, [id]);
+
+  // Core status advance lifecycle logic engine pushing structural changes to backend via HTTP PUT
+  const updateStatusOnBackend = async (newStatus) => {
+    if (!ticket) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        id: ticket.id,
+        title: ticket.title,
+        description: ticket.description,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: newStatus, // Set our advanced lifecycle stage name
+        createdById: ticket.createdById
+      };
+
+      const response = await fetch(`http://localhost:5201/api/tickets/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`State pipeline transition failed. System code returned: ${response.status}`);
+      }
+
+      const updatedTicketData = await response.json();
+      setTicket(updatedTicketData); // Sync UI state with backend confirmed data
+
+    } catch (err) {
+      alert(`Pipeline error encounter: ${err.message}`);
+    }
+  };
 
   const handlePostComment = (e) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    setTicket({
-      ...ticket,
-      comments: [
-        ...ticket.comments,
-        { id: Date.now(), author: 'Alex Johnson (You)', avatar: 'AJ', isSystem: false, text: commentText, time: 'Just now' }
-      ]
-    });
+    
+    // Appends to local comment timeline track arrays
+    setLocalComments([
+      ...localComments,
+      { id: Date.now(), author: 'Alex Johnson (You)', avatar: 'AJ', isSystem: false, text: commentText, time: 'Just now' }
+    ]);
     setCommentText('');
   };
 
-  const updateStatus = (newStatus) => {
-    setTicket(prev => ({ ...prev, status: newStatus }));
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-400 p-6 flex items-center justify-center font-sans">
+        <div className="animate-pulse font-semibold text-sm">Decoding diagnostic telemetry indices for node assignment...</div>
+      </div>
+    );
+  }
+
+  if (errorMessage || !ticket) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-rose-400 p-6 flex flex-col items-center justify-center font-sans space-y-4">
+        <div className="text-sm font-bold bg-rose-500/10 border border-rose-500/20 px-4 py-3 rounded-xl">{errorMessage || "Target ticket payload vector returned null."}</div>
+        <button onClick={() => navigate('/tickets')} className="text-xs text-slate-400 hover:text-white underline font-semibold">&larr; Return to main table layout index</button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-6 relative overflow-hidden font-sans">
@@ -47,12 +124,12 @@ export default function TicketDetails() {
         
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 ml-1">
-          <button className="hover:text-white transition-colors flex items-center gap-1">
+          <button onClick={() => navigate('/tickets')} className="hover:text-white transition-colors flex items-center gap-1">
             <span>&larr;</span> Back to Incident Matrix List
           </button>
           <span className="text-slate-700">/</span>
           <span className="text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/10">
-            {ticket.id}
+            #{ticket.id}
           </span>
         </div>
 
@@ -69,13 +146,13 @@ export default function TicketDetails() {
                   SYSTEM CORE INTERCEPT
                 </span>
                 <span className="text-xs text-slate-500 font-medium">
-                  {ticket.createdAt}
+                  {new Date(ticket.createdAt).toLocaleString()}
                 </span>
               </div>
               <h1 className="text-xl font-black text-white tracking-tight">
-                {ticket.subject}
+                {ticket.title}
               </h1>
-              <p className="text-slate-300 text-sm leading-relaxed font-medium">
+              <p className="text-slate-300 text-sm leading-relaxed font-medium whitespace-pre-wrap">
                 {ticket.description}
               </p>
             </div>
@@ -83,11 +160,11 @@ export default function TicketDetails() {
             {/* Responses/Activity Logs Stack Tracker */}
             <div className="space-y-4">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 ml-1">
-                Activity Logs & Responses ({ticket.comments.length})
+                Activity Logs & Responses ({localComments.length})
               </h3>
               
               <div className="space-y-3">
-                {ticket.comments.map((comment) => (
+                {localComments.map((comment) => (
                   <div 
                     key={comment.id} 
                     className={`p-5 rounded-2xl border backdrop-blur-sm shadow-xl flex gap-4 transition-all ${
@@ -155,10 +232,10 @@ export default function TicketDetails() {
                 <span className="text-slate-400 font-medium">Lifecycle Stage:</span>
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider shadow-sm border ${
                   ticket.status === 'Open' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse' :
-                  ticket.status === 'Progress' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                  ticket.status === 'InProgress' || ticket.status === 'In Progress' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                   'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                 }`}>
-                  {ticket.status}
+                  {ticket.status === 'InProgress' ? 'In Progress' : ticket.status}
                 </span>
               </div>
 
@@ -168,8 +245,8 @@ export default function TicketDetails() {
                 </p>
                 <div className="grid grid-cols-3 gap-2 text-xs font-bold">
                   <button 
-                    onClick={() => updateStatus('Open')}
-                    className={`py-2.5 rounded-xl border transition-all ${
+                    onClick={() => updateStatusOnBackend('Open')}
+                    className={`py-2.5 rounded-xl border transition-all active:scale-95 text-center text-[11px] ${
                       ticket.status === 'Open' 
                         ? 'bg-rose-500/20 text-rose-300 border-rose-500/60 shadow-lg shadow-rose-500/5' 
                         : 'bg-slate-950 text-slate-400 border-slate-800/60 hover:text-white hover:border-slate-700'
@@ -178,9 +255,9 @@ export default function TicketDetails() {
                     Open
                   </button>
                   <button 
-                    onClick={() => updateStatus('Progress')}
-                    className={`py-2.5 rounded-xl border transition-all ${
-                      ticket.status === 'Progress' 
+                    onClick={() => updateStatusOnBackend('InProgress')}
+                    className={`py-2.5 rounded-xl border transition-all active:scale-95 text-center text-[11px] ${
+                      ticket.status === 'InProgress' || ticket.status === 'In Progress'
                         ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-lg shadow-amber-500/5' 
                         : 'bg-slate-950 text-slate-400 border-slate-800/60 hover:text-white hover:border-slate-700'
                     }`}
@@ -188,9 +265,9 @@ export default function TicketDetails() {
                     Progress
                   </button>
                   <button 
-                    onClick={() => updateStatus('Resolve')}
-                    className={`py-2.5 rounded-xl border transition-all ${
-                      ticket.status === 'Resolve' 
+                    onClick={() => updateStatusOnBackend('Resolved')}
+                    className={`py-2.5 rounded-xl border transition-all active:scale-95 text-center text-[11px] ${
+                      ticket.status === 'Resolved' || ticket.status === 'Resolve'
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 shadow-lg shadow-emerald-500/5' 
                         : 'bg-slate-950 text-slate-400 border-slate-800/60 hover:text-white hover:border-slate-700'
                     }`}
@@ -209,12 +286,12 @@ export default function TicketDetails() {
               
               <div className="divide-y divide-slate-800/60 font-medium">
                 <div className="py-3 flex justify-between gap-4">
-                  <span className="text-slate-400">Reporter Account:</span>
-                  <span className="font-bold text-white text-right">{ticket.reporter}</span>
+                  <span className="text-slate-400">Reporter Identity Token:</span>
+                  <span className="font-bold text-white text-right">User #{ticket.createdById}</span>
                 </div>
                 <div className="py-3 flex justify-between gap-4">
-                  <span className="text-slate-400">Assigned Expert:</span>
-                  <span className="font-bold text-indigo-400 text-right">{ticket.assignedTo}</span>
+                  <span className="text-slate-400">Assigned Expert Node:</span>
+                  <span className="font-bold text-indigo-400 text-right">Tier 2 Dispatcher</span>
                 </div>
                 <div className="py-3 flex justify-between gap-4">
                   <span className="text-slate-400">Category Node:</span>
@@ -222,7 +299,11 @@ export default function TicketDetails() {
                 </div>
                 <div className="py-3 flex justify-between gap-4">
                   <span className="text-slate-400">Urgency Standard:</span>
-                  <span className="font-black text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 tracking-wide uppercase text-[10px]">
+                  <span className={`font-black px-2 py-0.5 rounded border tracking-wide uppercase text-[10px] ${
+                    ticket.priority === 'Critical' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' :
+                    ticket.priority === 'High' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                    'text-slate-400 bg-slate-950 border-slate-800'
+                  }`}>
                     {ticket.priority}
                   </span>
                 </div>

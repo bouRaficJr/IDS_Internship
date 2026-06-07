@@ -1,28 +1,64 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function TicketList() {
-  const initialTickets = [
-    { id: 'TCK-1002', subject: 'SSO Login Integration Failing with Okta', category: 'Authentication', priority: 'Critical', status: 'Open', reporter: 'Sarah Jenkins', assignedTo: 'Alex Johnson' },
-    { id: 'TCK-1003', subject: 'Billing discrepancy on Invoice #2026-04', category: 'Billing', priority: 'Medium', status: 'In Progress', reporter: 'Michael Chen', assignedTo: 'Emma Watson' },
-    { id: 'TCK-1004', subject: 'Mobile app crash on attachments upload', category: 'Mobile App', priority: 'High', status: 'Resolved', reporter: 'David K.', assignedTo: 'Alex Johnson' },
-    { id: 'TCK-1005', subject: 'Request for custom webhook endpoints documentation', category: 'API Support', priority: 'Low', status: 'Open', reporter: 'Samantha Cruz', assignedTo: 'Unassigned' }
-  ];
+  const navigate = useNavigate();
 
+  // Core application network state management arrays
+  const [tickets, setTickets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Filtering tracking state nodes
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('All Priorities');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
 
-  // Unified Multi-Filter Engine
+  // Fetch alive database assets on initial render mounting phase
+  useEffect(() => {
+    const fetchTicketsFromAPI = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5201/api/tickets', {
+          method: 'GET',
+          headers: {
+            'Accept': '*/*',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to query matrix parameters: System returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        setTickets(data);
+      } catch (err) {
+        setErrorMessage(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTicketsFromAPI();
+  }, []);
+
+  // Unified Multi-Filter Engine (Remapped from ticket.subject to ticket.title)
   const filteredTickets = useMemo(() => {
-    return initialTickets.filter(ticket => {
-      const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
+    return tickets.filter(ticket => {
+      // Safely process missing properties with optional fallbacks
+      const ticketTitle = ticket.title || '';
+      const ticketId = String(ticket.id || '');
+      
+      const matchesSearch = ticketTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            ticketId.toLowerCase().includes(searchTerm.toLowerCase());
+      
       const matchesPriority = selectedPriority === 'All Priorities' || ticket.priority === selectedPriority;
       const matchesStatus = selectedStatus === 'All Statuses' || ticket.status === selectedStatus;
       
       return matchesSearch && matchesPriority && matchesStatus;
     });
-  }, [searchTerm, selectedPriority, selectedStatus]);
+  }, [tickets, searchTerm, selectedPriority, selectedStatus]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-6 relative overflow-hidden font-sans">
@@ -43,7 +79,10 @@ export default function TicketList() {
               Audit, search, and allocate enterprise customer support tickets.
             </p>
           </div>
-          <button className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 active:from-indigo-700 active:to-violet-600 text-xs font-bold text-white rounded-xl transition-all shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 self-start sm:self-center">
+          <button 
+            onClick={() => navigate('/create-ticket')}
+            className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 active:from-indigo-700 active:to-violet-600 text-xs font-bold text-white rounded-xl transition-all shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 self-start sm:self-center"
+          >
             + Lodge New Ticket
           </button>
         </div>
@@ -53,7 +92,7 @@ export default function TicketList() {
           <div className="md:col-span-2">
             <input
               type="text"
-              placeholder="Search tickets by subject or identifier key..."
+              placeholder="Search tickets by title or numerical id identifier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 placeholder-slate-600 text-white transition-all"
@@ -80,11 +119,19 @@ export default function TicketList() {
             >
               <option value="All Statuses">All Statuses</option>
               <option value="Open">Open</option>
-              <option value="In Progress">In Progress</option>
+              <option value="InProgress">In Progress</option>
               <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
             </select>
           </div>
         </div>
+
+        {/* System Diagnostics Feedback Output */}
+        {errorMessage && (
+          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs font-semibold text-center">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Main Incident Ledger Grid Container */}
         <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
@@ -93,7 +140,7 @@ export default function TicketList() {
               <thead>
                 <tr className="border-b border-slate-800 text-xs text-slate-400 font-extrabold uppercase tracking-wider bg-slate-900/30">
                   <th className="py-4 px-6">ID</th>
-                  <th className="py-4 px-6">Subject & Team Assignments</th>
+                  <th className="py-4 px-6">Title & System Trace Info</th>
                   <th className="py-4 px-6">Category Node</th>
                   <th className="py-4 px-6">Urgency Standard</th>
                   <th className="py-4 px-6">Lifecycle Status</th>
@@ -101,7 +148,13 @@ export default function TicketList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50 text-sm font-medium">
-                {filteredTickets.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="6" className="py-12 text-center text-sm font-semibold text-slate-400 animate-pulse">
+                      Synchronizing local records with live relational database queue...
+                    </td>
+                  </tr>
+                ) : filteredTickets.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="py-12 text-center text-sm font-semibold text-slate-500">
                       No customer incident vectors found matching specified filter arrays.
@@ -110,19 +163,20 @@ export default function TicketList() {
                 ) : (
                   filteredTickets.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-900/50 transition-colors duration-150 group">
+                      
                       {/* Token Key Node */}
                       <td className="py-4 px-6 font-mono font-bold text-indigo-400 select-all">
-                        {t.id}
+                        #{t.id}
                       </td>
                       
                       {/* Title & Metadata Block */}
                       <td className="py-4 px-6">
                         <div className="space-y-1 max-w-md">
                           <h4 className="font-bold text-white group-hover:text-indigo-300 transition-colors duration-150 leading-snug">
-                            {t.subject}
+                            {t.title}
                           </h4>
-                          <p className="text-xs text-slate-400 font-medium">
-                            Reporter: <span className="text-slate-300 font-semibold">{t.reporter}</span> • Assigned: <span className="text-slate-300 font-semibold">{t.assignedTo}</span>
+                          <p className="text-xs text-slate-500 font-medium">
+                            System Node Identity Ref: <span className="text-slate-400 font-semibold">User #{t.createdById}</span>
                           </p>
                         </div>
                       </td>
@@ -154,7 +208,7 @@ export default function TicketList() {
                             )}
                             <span className={`relative inline-flex rounded-full h-2 w-2 ${
                               t.status === 'Open' ? 'bg-rose-500' : 
-                              t.status === 'In Progress' ? 'bg-amber-500' : 
+                              t.status === 'InProgress' || t.status === 'In Progress' ? 'bg-amber-500' : 
                               'bg-emerald-500'
                             }`} />
                           </span>
@@ -164,7 +218,10 @@ export default function TicketList() {
                       
                       {/* Detailed Drawer Actions Target */}
                       <td className="py-4 px-6 text-right whitespace-nowrap">
-                        <button className="px-3.5 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-white rounded-lg font-bold transition-all shadow-md">
+                        <button 
+                          onClick={() => navigate(`/ticket-details/${t.id}`)}
+                          className="px-3.5 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-xs text-white rounded-lg font-bold transition-all shadow-md active:scale-95"
+                        >
                           View
                         </button>
                       </td>

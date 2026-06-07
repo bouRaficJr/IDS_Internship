@@ -1,16 +1,68 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CreateTicket() {
-  const [ticket, setTicket] = useState({ subject: '', category: 'Authentication', priority: 'Medium', description: '' });
+  const navigate = useNavigate();
+  
+  // Note: Changed 'subject' to 'title' to match the C# API properties exactly!
+  const [ticket, setTicket] = useState({ 
+    title: '', 
+    category: 'Authentication', 
+    priority: 'Medium', 
+    description: '' 
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // This is ready to be connected to your .NET backend context API later
-    console.log('Submitting incident to .NET API queue:', ticket);
+    setIsLoading(true);
+    setErrorMessage('');
+
+    // Fetch your logged-in user profile from localStorage to find who created it
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : { id: 1 }; 
+    const token = localStorage.getItem('token');
+
+    const payload = {
+      title: ticket.title,
+      category: ticket.category,
+      priority: ticket.priority,
+      description: ticket.description,
+      status: "Open", // Default starting lifecycle state
+      createdById: user.id // Tie this ticket to the logged-in agent
+    };
+
+    try {
+      const response = await fetch('http://localhost:5201/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'Authorization': `Bearer ${token}` // Sends your JWT key cleanly
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server rejected request with status code: ${response.status}`);
+      }
+
+      // Successful addition! Send operator back to the incident queue screen
+      navigate('/tickets');
+
+    } catch (err) {
+      setErrorMessage(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDiscard = () => {
-    setTicket({ subject: '', category: 'Authentication', priority: 'Medium', description: '' });
+    setTicket({ title: '', category: 'Authentication', priority: 'Medium', description: '' });
+    navigate('/tickets');
   };
 
   return (
@@ -37,6 +89,13 @@ export default function CreateTicket() {
           onSubmit={handleSubmit} 
           className="p-8 bg-slate-900/70 border border-slate-800/80 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/40 space-y-6"
         >
+          {/* Error Banner System if transmission snaps */}
+          {errorMessage && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs font-semibold text-center">
+              {errorMessage}
+            </div>
+          )}
+
           {/* Metadata Selection Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
@@ -80,8 +139,8 @@ export default function CreateTicket() {
             <input
               type="text"
               required
-              value={ticket.subject}
-              onChange={(e) => setTicket({ ...ticket, subject: e.target.value })}
+              value={ticket.title}
+              onChange={(e) => setTicket({ ...ticket, title: e.target.value })}
               placeholder="e.g. Postgres DB replicas lag exceeds 40 seconds warning"
               className="w-full px-4 py-3 border border-slate-800 rounded-xl bg-slate-950 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200"
             />
@@ -113,9 +172,12 @@ export default function CreateTicket() {
             </button>
             <button 
               type="submit" 
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 active:from-indigo-700 active:to-violet-600 text-xs font-bold rounded-xl text-white transition-all shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+              disabled={isLoading}
+              className={`px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 active:from-indigo-700 active:to-violet-600 text-xs font-bold rounded-xl text-white transition-all shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              Create & Allocate Ticket
+              {isLoading ? 'Queuing System Asset...' : 'Create & Allocate Ticket'}
             </button>
           </div>
         </form>
