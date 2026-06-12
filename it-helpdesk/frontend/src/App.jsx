@@ -41,6 +41,7 @@ function AppContent() {
           <nav className="space-y-1">
             <Link to="/dashboard" className={`block w-full p-2 rounded ${location.pathname === '/dashboard' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Dashboard</Link>
             <Link to="/tickets" className={`block w-full p-2 rounded ${location.pathname === '/tickets' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Ticket List</Link>
+             <Link to="/ticket-details" className={`block w-full p-2 rounded ${location.pathname === '/ticket-details' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Ticket Details </Link>
             <Link to="/create-ticket" className={`block w-full p-2 rounded ${location.pathname === '/create-ticket' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Create Ticket</Link>
             <Link to="/reports" className={`block w-full p-2 rounded ${location.pathname === '/reports' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Reports & SLA</Link>
             <Link to="/notifications" className={`block w-full p-2 rounded ${location.pathname === '/notifications' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}>Notifications</Link>
@@ -65,7 +66,7 @@ function AppContent() {
             {/* Main Application Feature Routes */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tickets" element={<TicketList />} />
-            <Route path="/ticket-details/:id" element={<TicketDetails />} /> {/* Supports dynamic ID routing */}
+            <Route path="/ticket-details/:id" element={<TicketDetails />} /> 
             <Route path="/create-ticket" element={<CreateTicket />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/notifications" element={<Notifications />} />
