@@ -58,31 +58,33 @@ namespace ITHelpDeskBackend.Controllers
         // GET: api/TicketHistories/ticket/{ticketId}
         // Returns the list of actions performed on a specific ticket
         // ==========================================
-        [HttpGet("ticket/{ticketId}")]
-        public async Task<IActionResult> GetHistoryForTicket(int ticketId)
-        {
-            try
-            {
-                var historyWithUsers = await (from h in _context.TicketHistories
-                                             join u in _context.Users on h.ChangedByUserId equals u.Id
-                                             where h.TicketId == ticketId
-                                             orderby h.ChangedAt descending
-                                             select new {
-                                                 h.Id,
-                                                 h.TicketId,
-                                                 h.FieldChanged,
-                                                 h.OldValue,
-                                                 h.NewValue,
-                                                 h.ChangedAt,
-                                                 ChangedByUser = u.FullName
-                                             }).ToListAsync();
+        // Change the signature to include 'async' and 'Task<>'
+[HttpGet("logs/ticket/{ticketId}")] 
+public async Task<IActionResult> GetHistoryForTicketAsync(int ticketId) 
+{
+    try
+    {
+        // Now that the method is marked 'async', this 'await' will work
+        var historyWithUsers = await (from h in _context.TicketHistories
+                                      join u in _context.Users on h.ChangedByUserId equals u.Id
+                                      where h.TicketId == ticketId
+                                      orderby h.ChangedAt descending
+                                      select new {
+                                          h.Id,
+                                          h.TicketId,
+                                          h.FieldChanged,
+                                          h.OldValue,
+                                          h.NewValue,
+                                          h.ChangedAt,
+                                          ChangedByUser = u.FullName
+                                      }).ToListAsync();
 
-                return Ok(historyWithUsers);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Failed to load audit trail logs.", error = ex.Message });
-            }
-        }
+        return Ok(historyWithUsers);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "Failed to load audit trail logs.", error = ex.Message });
+    }
+}
     }
 }
